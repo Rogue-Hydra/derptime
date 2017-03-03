@@ -10,12 +10,25 @@
   import router from '../router';
 
   let labels = [];
-  let datas = [];
+  let dataArray = [];
   let myChart;
-  let intialized = false;
+  let initialized = false;
+  let colours = ['#f44336', '#3F51B5', '#E91E63', '#00BCD4', '#4CAF50', '#FFEB3B', '#9E9E9E', '#FF9800', '#9C27B0'];
   export default {
+    created() {
+      this.getChartData();
+    },
     beforeDestroy() {
-      Functions.storage.db.ref('responseTimes').child(Functions.user.uid).child(this.niceName).off();
+      if (this.arrayOfNames.length > 1) {
+        this.arrayOfNames.forEach((name) => {
+          Functions.storage.db.ref('responseTimes').child(Functions.user.uid).child(name).off();
+        });
+      } else {
+        Functions.storage.db.ref('responseTimes').child(Functions.user.uid).child(this.niceName).off();
+      }
+      labels = [];
+      dataArray = [];
+      initialized = false;
     },
     mounted() {
       let ctx = document.getElementById("myChart");
@@ -23,29 +36,16 @@
         type: 'line',
         data: {
           labels: labels,
-          datasets: [{
-            label: `${this.niceName} Response Time (ms)`,
-            data: datas,
-            backgroundColor: [
-              'rgba(255, 99, 132, 0.2)',
-              'rgba(54, 162, 235, 0.2)',
-              'rgba(255, 206, 86, 0.2)',
-              'rgba(75, 192, 192, 0.2)',
-              'rgba(153, 102, 255, 0.2)',
-              'rgba(255, 159, 64, 0.2)'
-            ],
-            borderColor: [
-              'rgba(255,99,132,1)',
-              'rgba(54, 162, 235, 1)',
-              'rgba(255, 206, 86, 1)',
-              'rgba(75, 192, 192, 1)',
-              'rgba(153, 102, 255, 1)',
-              'rgba(255, 159, 64, 1)'
-            ],
-            borderWidth: 1
-          }]
+          datasets: dataArray
         },
         options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          elements: {
+            line: {
+              tension: 0,
+            },
+          },
           scales: {
             yAxes: [{
               ticks: {
@@ -55,30 +55,110 @@
           },
         }
       });
-      intialized = true;
+      initialized = true;
     },
     data() {
       return {
         niceName: this.$route.query.niceName,
-        data: this.getChartData(),
+        arrayOfNames: this.$route.query.niceName.split(','),
       }
     },
     methods: {
       getChartData() {
+        function selectColor(colorNum, colors, opacity) {
+          if (colors < 1) colors = 1; // defaults to one color - avoid divide by zero
+          return "hsla(" + (colorNum * (360 / colors) % 360) + ",100%,50%," + opacity + ")";
+        }
+
         Functions.checkAuth().then(() => {
-          Functions.storage.db.ref('responseTimes').child(Functions.user.uid).child(this.niceName).limitToLast(30).on('child_added', function (data) {
-            let response = data.val();
-            let startTime = new Date(response.startTime);
-            labels.push(startTime.getHours() + ':' + startTime.getMinutes());
-            datas.push(response.responseTime);
-            if (intialized === true) {
-              if (labels.length > 30) {
-                labels.shift();
-                datas.shift();
+          if (this.arrayOfNames.length > 1) {
+            this.arrayOfNames.forEach((niceName) => {
+              Functions.storage.db.ref('responseTimes').child(Functions.user.uid).child(niceName).limitToLast(90).on('child_added', (data) => {
+                let response = data.val();
+                let index = this.arrayOfNames.indexOf(response.niceName);
+
+                if (!dataArray[index]) {
+                  dataArray.push({
+                    label: response.niceName,
+                    data: [response.timings.firstByte],
+                    borderWidth: 1,
+                    backgroundColor: selectColor(index, this.arrayOfNames.length, .2)
+                  });
+                } else {
+                  dataArray[index].data.push(response.responseTime);
+                }
+
+                if (index === 0) {
+                  if (labels.length % 5 === 0) {
+                    let date = new Date(response.startTime);
+                    labels.push(`${(date.getHours() < 10 ? '0' : '') + date.getHours()}:${(date.getMinutes() < 10 ? '0' : '') + date.getMinutes()}`);
+                  } else {
+                    labels.push('');
+                  }
+                }
+
+                if (initialized === true) {
+                  if (dataArray[index].data.length > 90) {
+                    dataArray[index].data.shift();
+                  }
+                  if (labels.length > 90) {
+                    labels.shift();
+                  }
+                  myChart.update();
+                }
+              });
+            });
+          } else {
+            Functions.storage.db.ref('responseTimes').child(Functions.user.uid).child(this.niceName).limitToLast(90).on('child_added', function (data) {
+              let response = data.val();
+              let date = new Date(response.startTime);
+              if (!dataArray[0]) {
+                dataArray.push({
+                  label: 'TCP (ms)',
+                  data: [Math.floor(response.timings.tcp)],
+                  borderWidth: 1,
+                  backgroundColor: selectColor(3, 4, .5)
+                });
+                dataArray.push({
+                  label: 'DNS (ms)',
+                  data: [Math.floor(response.timings.dns)],
+                  borderWidth: 1,
+                  backgroundColor: selectColor(1, 4, .5)
+                });
+                dataArray.push({
+                  label: 'First Byte (ms)',
+                  data: [Math.floor(response.timings.firstByte)],
+                  borderWidth: 1,
+                  backgroundColor: selectColor(4, 4, .2)
+                });
+                dataArray.push({
+                  label: 'Total inc Download (ms)',
+                  data: [response.responseTime],
+                  borderWidth: 1,
+                  backgroundColor: selectColor(2, 4, .2)
+                });
+                labels.push(`${(date.getHours() < 10 ? '0' : '') + date.getHours()}:${(date.getMinutes() < 10 ? '0' : '') + date.getMinutes()}`)
+              } else {
+                labels.push(`${(date.getHours() < 10 ? '0' : '') + date.getHours()}:${(date.getMinutes() < 10 ? '0' : '') + date.getMinutes()}`);
+                dataArray[0].data.push(Math.floor(response.timings.tcp));
+                dataArray[1].data.push(Math.floor(response.timings.dns));
+                dataArray[2].data.push(Math.floor(response.timings.firstByte));
+                dataArray[3].data.push(Math.floor(response.responseTime));
               }
-              myChart.update();
-            }
-          });
+              if (initialized === true) {
+                if (dataArray[0].data.length > 90) {
+                  dataArray[0].data.shift();
+                  dataArray[1].data.shift();
+                  dataArray[2].data.shift();
+                  dataArray[3].data.shift();
+                }
+                if (labels.length > 90) {
+                  labels.shift();
+                }
+                myChart.update();
+              }
+            });
+          }
         });
       }
     },
@@ -90,7 +170,7 @@
 <style lang="scss" scoped>
   #myChart {
     width: 100%;
-    height: 100%;
+    height: 100vh !important;
   }
 
   .charts {

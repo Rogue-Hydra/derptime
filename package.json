@@ -12,16 +12,10 @@
     "test": "npm run unit && npm run e2e"
   },
   "dependencies": {
-    "callback-loader": "^0.2.4",
     "chart.js": "^2.5.0",
     "firebase": "^3.6.10",
     "vue": "^2.1.10",
-    "vue-icons": "^2.0.0",
-    "vue-router": "^2.2.0",
-    "vuex": "^2.1.2",
-    "vuex-localstorage": "^1.0.0",
-    "vuex-persistedstate": "^1.2.0",
-    "vuex-router-sync": "^4.1.2"
+    "vue-router": "^2.2.0"
   },
   "devDependencies": {
     "autoprefixer": "^6.7.2",

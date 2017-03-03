@@ -2,7 +2,7 @@
   <div class="dashboard">
     <transition-group name="monitors" class="monitors" tag="div">
       <div class="monitor" v-for="monitor in monitors" :key="monitor.url">
-        <div v-if="monitor.responseTime <= 1000 && monitor.responseTime !== 2147000000">
+        <div v-if="monitor.timings.firstByte <= 1000 && monitor.responseTime !== 2147000000">
           <div class="details">
             <router-link :to="{path: 'chart', query: { niceName: monitor.niceName }}">
               <p class="domain">{{ monitor.niceName }}</p>
@@ -12,9 +12,9 @@
           <div class="actions" v-on:click="removeMonitor(monitor)">
             <div class="remove">Remove</div>
           </div>
-          <p class="color-green response">Response Time: {{ monitor.responseTime }}ms</p>
+          <p class="color-green response">Response Time: {{ Math.floor(monitor.timings.firstByte) }}ms</p>
         </div>
-        <div v-else-if="monitor.responseTime > 1000 && monitor.responseTime !== 2147000000">
+        <div v-else-if="monitor.timings.firstByte > 1000 && monitor.responseTime !== 2147000000">
           <div class="details">
             <router-link :to="{path: 'chart', query: { niceName: monitor.niceName }}">
               <p class="domain">{{ monitor.niceName }}</p>
@@ -24,9 +24,9 @@
           <div class="actions" v-on:click="removeMonitor(monitor)">
             <div class="remove">Remove</div>
           </div>
-          <p class="color-orange response">Response Time: {{ monitor.responseTime }}ms</p>
+          <p class="color-orange response">Response Time: {{ Math.floor(monitor.timings.firstByte) }}ms</p>
         </div>
-        <div v-else="monitor.responseTime <= 1000 && monitor.responseTime !== 2147000000">
+        <div v-else>
           <div class="details">
             <router-link :to="{path: 'chart', query: { niceName: monitor.niceName }}">
               <p class="domain">{{ monitor.niceName }}</p>
@@ -56,14 +56,14 @@
       }
     },
     methods: {
-      getMonitors: function (first = false) {
+      getMonitors(first = false) {
         let monitorsArray = [];
         Functions.storage.db.ref('responseTime').child(Functions.user.uid).on('child_added', (snapshot) => {
           monitorsArray.push(snapshot.val());
         });
 
         monitorsArray.sort((a, b) => {
-          return b.responseTime - a.responseTime;
+          return b.timings.firstByte - a.timings.firstByte;
         });
         if (!first) {
           this.monitors = monitorsArray;
