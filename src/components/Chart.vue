@@ -117,25 +117,25 @@
                   label: 'TCP (ms)',
                   data: [Math.floor(response.timings.tcp)],
                   borderWidth: 1,
-                  backgroundColor: selectColor(3, 4, .5)
+                  backgroundColor: selectColor(1, 4, .5)
                 });
                 dataArray.push({
                   label: 'DNS (ms)',
                   data: [Math.floor(response.timings.dns)],
                   borderWidth: 1,
-                  backgroundColor: selectColor(1, 4, .5)
+                  backgroundColor: selectColor(3, 4, .7)
                 });
                 dataArray.push({
                   label: 'First Byte (ms)',
                   data: [Math.floor(response.timings.firstByte)],
                   borderWidth: 1,
-                  backgroundColor: selectColor(4, 4, .2)
+                  backgroundColor: selectColor(2, 4, .5)
                 });
                 dataArray.push({
                   label: 'Total inc Download (ms)',
                   data: [response.responseTime],
                   borderWidth: 1,
-                  backgroundColor: selectColor(2, 4, .2)
+                  backgroundColor: selectColor(4, 4, .2)
                 });
                 labels.push(`${(date.getHours() < 10 ? '0' : '') + date.getHours()}:${(date.getMinutes() < 10 ? '0' : '') + date.getMinutes()}`)
               } else {
